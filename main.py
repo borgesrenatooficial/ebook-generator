@@ -4,28 +4,18 @@ Compatível com Railway/Render - Deploy automático
 """
 
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from typing import List
 import io
 import os
 from ebook_generator import EbookEngine
 
-app = FastAPI(
-    title="Ebook Generator API",
-    description="Gera eBooks .docx profissionais",
-    version="1.0.1"
-)
+app = FastAPI(title="Ebook Generator")
 
-# CORS para front HTML
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# CORS
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
 class ContentItem(BaseModel):
     type: str
@@ -34,17 +24,24 @@ class ContentItem(BaseModel):
 
 @app.get("/")
 async def root():
-    return {
-        "message": "🚀 Ebook Generator rodando!",
-        "api": "/generate-ebook/",
-        "docs": "/docs", 
-        "test_here": "Use /generate-ebook/ diretamente"
-    }
+    return {"message": "🚀 Ebook Generator rodando!", "endpoint": "/generate-ebook/"}
 
 @app.post("/generate-ebook/")
-async def generate_ebook(title: str, content: List[ContentItem], filename: str = "ebook.docx"):
+async def generate_ebook(request: dict):  # Recebe TUDO no body JSON
+    """
+    Recebe: {"title": "...", "content": [...], "filename": "..."}
+    """
     try:
-        content_list = [{"type": c.type, "text": c.text, "break_page": c.break_page} for c in content]
+        title = request.get("title", "Ebook Sem Título")
+        content = request.get("content", [])
+        filename = request.get("filename", "ebook.docx")
+        
+        if not content:
+            raise ValueError("Content é obrigatório")
+        
+        # Converte para formato do EbookEngine
+        content_list = [{"type": c["type"], "text": c["text"], "break_page": c.get("break_page", False)} for c in content]
+        
         engine = EbookEngine(title)
         temp_filename = "temp.docx"
         engine.build_ebook(content_list, temp_filename)
@@ -59,7 +56,13 @@ async def generate_ebook(title: str, content: List[ContentItem], filename: str =
             headers={"Content-Disposition": f'attachment; filename="{filename}"'}
         )
     except Exception as e:
-        raise HTTPException(500, str(e))
+        raise HTTPException(500, f"Erro: {str(e)}")
+
+@app.get("/test")
+async def test():
+    """Endpoint de teste simples"""
+    return {"status": "OK", "ready": True}
+
 
 # Redireciona /docs para raiz (temporário)
 @app.get("/docs")
