@@ -1,143 +1,117 @@
 """
-main.py - API Ebook Generator com Upload de Arquivos
-Aceita: .txt e .docx → Gera .docx formatado profissional
+Nome do Script: main.py
+Autor: Renato Borges
+Data: 18 de Março de 2026
+Versão: 1.1.0
+Propósito: API REST para processamento de arquivos e geração de eBooks.
 """
 
-from fastapi import FastAPI, HTTPException, UploadFile, File, Form
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
-from docx import Document
-import io
 import os
-from ebook_generator import EbookEngine
+import uuid
+import logging
+from fastapi import FastAPI, UploadFile, File, Form, BackgroundTasks
+from fastapi.responses import StreamingResponse, JSONResponse
+from ebook_engine import EbookEngine
+from docx import Document as DocxReader
 
-app = FastAPI(title="Ebook Generator API - Upload")
+# Configurações Iniciais
+app = FastAPI(title="Ebook Generator API")
+logger = logging.getLogger("uvicorn")
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# ─── HELPERS ────────────────────────────────────────────
+def cleanup_file(filepath: str):
+    """Remove o arquivo temporário do disco após o envio."""
+    if os.path.exists(filepath):
+        os.remove(filepath)
+        logger.info(f"Arquivo temporário removido: {filepath}")
 
 def parse_txt(content: str) -> list:
-    """
-    Converte .txt em estrutura H1/H2/P automaticamente.
-    Regras:
-      - Linha com # → H1
-      - Linha com ## → H2
-      - Linha em branco → ignora
-      - Resto → parágrafo
-    """
-    items = []
-    for line in content.splitlines():
+    """Faz o parse de strings .txt seguindo regras de Markdown simplificado (# e ##)."""
+    lines = content.split('\n')
+    parsed_data = []
+    for line in lines:
         line = line.strip()
-        if not line:
-            continue
-        if line.startswith("## "):
-            items.append({"type": "h2", "text": line[3:].strip()})
-        elif line.startswith("# "):
-            items.append({"type": "h1", "text": line[2:].strip()})
+        if not line: continue
+        
+        if line.startswith("# "):
+            parsed_data.append({"type": "h1", "text": line[2:]})
+        elif line.startswith("## "):
+            parsed_data.append({"type": "h2", "text": line[3:]})
         else:
-            items.append({"type": "p", "text": line})
-    return items
+            parsed_data.append({"type": "p", "text": line})
+    return parsed_data
 
-def parse_docx(file_bytes: bytes) -> list:
-    """
-    Extrai texto do .docx mantendo hierarquia de estilos.
-    Heading 1 → h1 | Heading 2 → h2 | Normal → p
-    """
-    doc = Document(io.BytesIO(file_bytes))
-    items = []
+def parse_docx(file_path: str) -> list:
+    """Extrai estrutura h1, h2 e p de um arquivo .docx existente."""
+    doc = DocxReader(file_path)
+    parsed_data = []
     for para in doc.paragraphs:
+        style = para.style.name.lower()
         text = para.text.strip()
-        if not text:
-            continue
-        style = para.style.name
-        if "Heading 1" in style:
-            items.append({"type": "h1", "text": text})
-        elif "Heading 2" in style:
-            items.append({"type": "h2", "text": text})
+        if not text: continue
+        
+        if "heading 1" in style:
+            parsed_data.append({"type": "h1", "text": text})
+        elif "heading 2" in style:
+            parsed_data.append({"type": "h2", "text": text})
         else:
-            items.append({"type": "p", "text": text})
-    return items
-
-# ─── ENDPOINTS ──────────────────────────────────────────
+            parsed_data.append({"type": "p", "text": text})
+    return parsed_data
 
 @app.get("/")
-async def root():
-    return {
-        "message": "🚀 Ebook Generator rodando!",
-        "endpoints": {
-            "upload": "POST /upload-ebook/",
-            "json": "POST /generate-ebook/"
-        }
-    }
+async def health_check():
+    """Endpoint de verificação de integridade."""
+    return {"status": "online", "message": "Ebook Generator API rodando!", "version": "1.1.0"}
 
 @app.post("/upload-ebook/")
 async def upload_ebook(
-    file: UploadFile = File(...),
+    background_tasks: BackgroundTasks,
     title: str = Form(...),
-    filename: str = Form("ebook-gerado.docx")
+    filename: str = Form("ebook.docx"),
+    file: UploadFile = File(...)
 ):
     """
-    Recebe .txt ou .docx → gera eBook formatado → retorna .docx
+    Recebe arquivo, processa e retorna o .docx formatado.
     """
+    temp_input = f"input_{uuid.uuid4()}_{file.filename}"
+    temp_output = f"output_{uuid.uuid4()}.docx"
+    
     try:
-        ext = os.path.splitext(file.filename)[1].lower()
-        if ext not in [".txt", ".docx"]:
-            raise HTTPException(400, "Apenas arquivos .txt ou .docx são aceitos.")
+        # Salva arquivo enviado pelo usuário
+        with open(temp_input, "wb") as buffer:
+            content_bytes = await file.read()
+            buffer.write(content_bytes)
 
-        file_bytes = await file.read()
-
-        # Parse conforme extensão
-        if ext == ".txt":
-            content_list = parse_txt(file_bytes.decode("utf-8", errors="ignore"))
+        # Determina o parser
+        if file.filename.endswith('.txt'):
+            content_str = content_bytes.decode("utf-8")
+            content_list = parse_txt(content_str)
         else:
-            content_list = parse_docx(file_bytes)
+            content_list = parse_docx(temp_input)
 
-        if not content_list:
-            raise HTTPException(400, "Arquivo vazio ou sem conteúdo válido.")
-
-        # Gera eBook
+        # Gera o novo eBook
         engine = EbookEngine(title)
-        temp_file = "temp_output.docx"
-        engine.build_ebook(content_list, temp_file)
+        engine.build_ebook(content_list, temp_output)
 
-        with open(temp_file, "rb") as f:
-            output = io.BytesIO(f.read())
-        os.remove(temp_file)
+        # Retorna o arquivo como Stream
+        file_handle = open(temp_output, mode="rb")
+        
+        # Agenda limpeza dos arquivos temporários
+        background_tasks.add_task(cleanup_file, temp_input)
+        background_tasks.add_task(cleanup_file, temp_output)
 
         return StreamingResponse(
-            output,
+            file_handle,
             media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-            headers={"Content-Disposition": f'attachment; filename="{filename}"'}
+            headers={"Content-Disposition": f"attachment; filename={filename}"}
         )
 
-    except HTTPException:
-        raise
     except Exception as e:
-        raise HTTPException(500, f"Erro interno: {str(e)}")
+        logger.error(f"Erro no processamento: {str(e)}")
+        # Garante limpeza em caso de erro
+        cleanup_file(temp_input)
+        cleanup_file(temp_output)
+        return JSONResponse(status_code=500, content={"error": "Falha ao gerar eBook."})
 
-@app.post("/generate-ebook/")
-async def generate_ebook(request: dict):
-    """Mantém endpoint JSON original"""
-    try:
-        title = request.get("title", "Ebook")
-        content = request.get("content", [])
-        filename = request.get("filename", "ebook.docx")
-        engine = EbookEngine(title)
-        temp_file = "temp_json.docx"
-        engine.build_ebook(content, temp_file)
-        with open(temp_file, "rb") as f:
-            output = io.BytesIO(f.read())
-        os.remove(temp_file)
-        return StreamingResponse(
-            output,
-            media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-            headers={"Content-Disposition": f'attachment; filename="{filename}"'}
-        )
-    except Exception as e:
-        raise HTTPException(500, str(e))
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
