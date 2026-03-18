@@ -1,8 +1,5 @@
 # Autor: Renato Borges
-# Data: 18 de Março de 2026
 # Versão: 1.1.0
-# Dependências necessárias para FastAPI + DOCX + Railway
-
 fastapi==0.115.0
 uvicorn[standard]==0.30.6
 python-multipart==0.0.9
