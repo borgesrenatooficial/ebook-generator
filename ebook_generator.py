@@ -1,9 +1,9 @@
 """
-Nome do Script: ebook_engine.py
+Nome do Script: ebook_generator.py
 Autor: Renato Borges
 Data: 18 de Março de 2026
-Versão: 1.0.0
-Propósito: Motor de processamento e formatação de documentos .docx (EbookEngine).
+Versão: 1.1.0
+Propósito: Engine de conversão e estilização de documentos .docx.
 """
 
 import logging
@@ -13,107 +13,71 @@ from docx.shared import Pt
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml import OxmlElement, ns
 
-# Configuração de Logging
+# Configuração de Log para monitoramento em produção (Railway)
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 class EbookEngine:
-    """Classe responsável pela lógica de estilização e geração do arquivo .docx."""
+    """Responsável pela padronização visual do eBook conforme briefing técnico."""
 
     def __init__(self, title: str):
-        """
-        Inicializa o motor com o título do eBook.
-        
-        :param title: Título principal que aparecerá na capa.
-        """
         self.title = title
         self.doc = Document()
-        self._setup_styles()
+        self._apply_global_styles()
 
-    def _setup_styles(self) -> None:
-        """Configura os estilos globais (H1, H2, Normal) conforme briefing técnico."""
-        try:
-            # Heading 1 -> Arial 28pt Bold
-            h1 = self.doc.styles['Heading 1']
-            h1.font.name = 'Arial'
-            h1.font.size = Pt(28)
-            h1.font.bold = True
-
-            # Heading 2 -> Arial 22pt Bold
-            h2 = self.doc.styles['Heading 2']
-            h2.font.name = 'Arial'
-            h2.font.size = Pt(22)
-            h2.font.bold = True
-
-            # Normal -> Calibri 16pt Justificado
-            normal = self.doc.styles['Normal']
-            normal.font.name = 'Calibri'
-            normal.font.size = Pt(16)
-            normal.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
-            
-            logger.info("Estilos tipográficos configurados com sucesso.")
-        except Exception as e:
-            logger.error(f"Erro ao configurar estilos: {e}")
-
-    def _add_page_number(self, run) -> None:
-        """
-        Insere o campo XML de numeração de página automática (PAGE).
-        """
-        fldChar1 = OxmlElement('w:fldChar')
-        fldChar1.set(ns.qn('w:fldCharType'), 'begin')
-
-        instrText = OxmlElement('w:instrText')
-        instrText.set(ns.qn('xml:space'), 'preserve')
-        instrText.text = "PAGE"
-
-        fldChar2 = OxmlElement('w:fldChar')
-        h = ns.qn('w:fldCharType')
-        fldChar2.set(h, 'separate')
-
-        fldChar3 = OxmlElement('w:fldChar')
-        fldChar3.set(ns.qn('w:fldCharType'), 'end')
-
-        run._r.append(fldChar1)
-        run._r.append(instrText)
-        run._r.append(fldChar2)
-        run._r.append(fldChar3)
-
-    def build_ebook(self, content: List[Dict[str, str]], filename: str) -> None:
-        """
-        Gera o documento final baseado na lista de blocos de conteúdo.
+    def _apply_global_styles(self) -> None:
+        """Define a tipografia: H1 (Arial 28), H2 (Arial 22), Body (Calibri 16)."""
+        styles = self.doc.styles
         
-        :param content: Lista de dicts contendo {'type': 'h1'|'h2'|'p', 'text': '...'}
-        :param filename: Nome do arquivo de saída.
-        """
-        # 1. Capa
-        para_title = self.doc.add_paragraph()
-        para_title.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        run = para_title.add_run(self.title)
-        run.font.size = Pt(36)
-        run.font.bold = True
+        # Heading 1
+        h1 = styles['Heading 1']
+        h1.font.name, h1.font.size, h1.font.bold = 'Arial', Pt(28), True
         
+        # Heading 2
+        h2 = styles['Heading 2']
+        h2.font.name, h2.font.size, h2.font.bold = 'Arial', Pt(22), True
+
+        # Normal (Corpo do texto)
+        normal = styles['Normal']
+        normal.font.name, normal.font.size = 'Calibri', Pt(16)
+        normal.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+
+    def _add_page_numbers(self) -> None:
+        """Insere numeração de página no rodapé via manipulação de XML (OxmlElement)."""
+        footer = self.doc.sections[0].footer
+        paragraph = footer.paragraphs[0]
+        paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        
+        run = paragraph.add_run()
+        fldChar1 = OxmlElement('w:fldChar'); fldChar1.set(ns.qn('w:fldCharType'), 'begin')
+        instrText = OxmlElement('w:instrText'); instrText.set(ns.qn('xml:space'), 'preserve'); instrText.text = "PAGE"
+        fldChar2 = OxmlElement('w:fldChar'); fldChar2.set(ns.qn('w:fldCharType'), 'separate')
+        fldChar3 = OxmlElement('w:fldChar'); fldChar3.set(ns.qn('w:fldCharType'), 'end')
+
+        run._r.extend([fldChar1, instrText, fldChar2, fldChar3])
+
+    def build(self, content: List[Dict], output_path: str) -> None:
+        """Constrói o documento final: Capa -> Conteúdo -> Rodapé."""
+        # Capa
+        cp = self.doc.add_paragraph()
+        cp.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        run = cp.add_run(f"\n\n\n{self.title}")
+        run.font.size, run.font.bold = Pt(36), True
         self.doc.add_page_break()
 
-        # 2. Processamento do Conteúdo
-        for block in content:
-            text_type = block.get("type")
-            text_val = block.get("text", "").strip()
+        # Corpo
+        for item in content:
+            style_type = item.get("type", "p")
+            text = item.get("text", "").strip()
+            if not text: continue
 
-            if not text_val:
-                continue
-
-            if text_type == "h1":
-                self.doc.add_heading(text_val, level=1)
-            elif text_type == "h2":
-                self.doc.add_heading(text_val, level=2)
+            if style_type == "h1":
+                self.doc.add_heading(text, level=1)
+            elif style_type == "h2":
+                self.doc.add_heading(text, level=2)
             else:
-                self.doc.add_paragraph(text_val)
+                self.doc.add_paragraph(text)
 
-        # 3. Rodapé com Numeração
-        footer = self.doc.sections[0].footer
-        para_footer = footer.paragraphs[0]
-        para_footer.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        self._add_page_number(para_footer.add_run())
-
-        self.doc.save(filename)
-        logger.info(f"Ebook '{filename}' gerado com sucesso.")
+        self._add_page_numbers()
+        self.doc.save(output_path)
+        logger.info(f"Sucesso: {output_path} gerado.")
