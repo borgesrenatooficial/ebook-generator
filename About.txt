@@ -1,0 +1,138 @@
+# SOBRE O PROJETO
+
+## 1. OBJETIVO
+Este documento reúne as regras de diagramação e formatação para e‑books voltados à leitura em smartphone, com foco em:
+- Leiturabilidade em celular.
+- Hierarquia tipográfica clara (títulos, subtítulos, texto).
+- Padronização de espaçamento, sumário e referências.
+- Uso da API da Perplexity para revisão e melhoria do texto.
+
+## 2. TIPOGRAFIA E TAMANHOS
+
+### 2.1. Corpo do texto
+- Tamanho da fonte: **mínimo 18 pt** (ou 18 px, conforme plataforma).
+- Fonte recomendada: fonte sem serifa (ex.: Arial, Roboto, Lato ou similares) para melhor leitura em celular.
+- Alinhamento: texto justificado arrastado ou alinhado à esquerda.
+- Entrelinha: **1,5** (ou 1,6) para melhor respiração visual.
+
+### 2.2. Títulos e subtítulos
+- H1 (título principal do capítulo): **24 pt**, negrito, caixa alta opcional.
+- H2 (subtítulo de seção): **20 pt**, negrito.
+- H3 (subseção): **18 pt**, negrito.
+- H4 (subsubseção, se necessário): 16 pt, negrito ou sem negrito, dependendo do fluxo.
+
+### 2.3. Cuidados tipográficos
+- Usar apenas 1 ou 2 fontes máximas no livro inteiro (1 para corpo, 1 opcional para títulos).
+- Evitar itálico excessivo; use negrito com moderação.
+- Garantir boa espessura de linha (fonte não muito fina) para telas pequenas.
+
+## 3. MARGENS E MANCHA GRÁFICA
+
+- Margens mínimas: 2 cm (lateral), 2,5 cm (topo), 2 cm (base), ajustáveis conforme o leitor.
+- Mancha de texto não muito larga: limite de 60–80 caracteres por linha.
+- Evitar parágrafos muito longos: quebrar textos em 3–6 linhas por parágrafo.
+
+## 4. PAGINAÇÃO E QUEBRAS DE PÁGINA
+
+- Inserir numeração de página em rodapé (centralizado ou alinhado à direita).
+- Garantir que:
+  - Nenhum parágrafo seja cortado ao meio entre duas páginas.
+  - Não haja “órfão” ou “viúvo” (sobrar apenas uma linha de parágrafo na página seguinte).
+- Trabalhar com quebras de páginas/quebras de seção antes de títulos H1 e H2.
+
+## 5. ÁREA DE RESPIRO (ESPAÇAMENTO E VOLUME)
+
+- Espaçamento entre parágrafos: equivalente a uma linha em branco (ou 1,2× entrelinha).
+- Evitar blocos de texto muito densos; usar:
+  - Listas com marcadores ou numeração.
+  - Caixas de destaque (boxes) para dicas, exemplos ou conceitos‑chave.
+- Garantir pelo menos 1–2 parágrafos de “área de respiro” a cada 8–10 parágrafos densos.
+
+## 6. SUMÁRIO E NAVEGAÇÃO
+
+- Incluir um **sumário interno** (índice) logo no início, com:
+  - Capítulos e seções principais.
+  - Links clicáveis (se o formato suportar, como EPUB/PDF interativo).
+- Manter numeração de capítulos e seções coerente (ex.: 1, 1.1, 1.2, 2, 2.1 etc.).
+- Garantir que títulos no sumário correspondam exatamente aos títulos das seções no texto.
+
+## 7. USO DA API DA PERPLEXITY PARA REVISÃO
+
+Você pode usar a API da Perplexity para:
+- Revisar ortografia, gramática e clareza.
+- Sugestões de reescrita de parágrafos muito densos.
+- Ajuste automático de tom (mais formal, mais didático etc.).
+
+### Exemplo de fluxo:
+1. Enviar o texto base (capítulo ou seção) para a API.
+2. Pedir:
+   - “Reescreva o texto mantendo o significado, com foco em clareza para leitura em celular.”
+   - “Reduza períodos muito longos, divida em parágrafos de 3–5 linhas.”
+3. Reintegrar o texto revisado no seu arquivo de diagramação.
+
+## 8. FORMATO FINAL DO TEXTO
+
+- O arquivo de trabalho deve ser organizado em estrutura lógica (Markdown ou HTML simples, se possível):
+  - H1: capítulo
+  - H2: seção
+  - H3: subseção
+  - Parágrafos e listas bem delimitados.
+- Salvar o arquivo de orientação em **.txt** (este arquivo) para uso como padrão em todos os e‑books.
+
+## 9. SEÇÃO DE REFERÊNCIAS (FORMATO ABNT)
+
+Caso o texto base não contenha a seção “Referências”, insira no final:
+
+### 9.1. Estrutura da página
+- Título: **REFERÊNCIAS** (centralizado, negrito, H1, 24 pt).
+- Entrelinha: 1,5.
+- Alinhamento: justificado à esquerda.
+
+### 9.2. Modelo de referência (ABNT NBR 6023:2018)
+
+Livro impresso:
+SOBRENOME, Nome. Título do livro: subtítulo, se houver. Edição. Cidade: Editora, ano.
+
+Livro digital (e‑book):
+SOBRENOME, Nome. Título do livro: subtítulo, se houver. Edição. Cidade: Editora, ano. E‑book.
+
+Artigo de site:
+SOBRENOME, Nome. Título do artigo. Nome do site, cidade (se houver), data de publicação. Disponível em: url. Acesso em: dia mês. ano.
+
+Exemplo:
+GONÇALVES, Pedro. Educação e tecnologia: o futuro das salas de aula. 2. ed. São Paulo: Editora Digital, 2024. E‑book.
+
+## 10. CAPA DO EBOOK
+
+### 10.1. Estrutura da capa
+- Tamanho sugerido: proporcional a celular (ex.: 1080×1350 px ou 16:20).
+- Fundo: cores fortes, seguindo teoria das cores de acordo com o tema do ebook:
+  - Psicologia/Educação: tons de azul, verde ou roxo.
+  - Negócios/Produtividade: tons de laranja, vermelho ou roxo escuro.
+  - Espiritualidade: tons de roxo, dourado, azul profundo.
+- Contraste alto entre fundo e texto (fundo escuro com texto claro, ou vice‑versa).
+
+### 10.2. Básico de tipografia na capa
+- Título principal: fonte robusta, grande (mínimo 48 px no modelo digital).
+- Subtítulo (se houver): 24–32 px, em cor que contraste com o título.
+- Nome do autor: 24–28 px, em posição inferior ou central.
+- Editora digital: “Editora digital: professorrenato.com” em 18–20 px.
+
+### 10.3. Logotipo e elementos visuais
+- Logotipo da editora (se houver) em posição discreta (canto inferior direito/esquerdo).
+- Imagem de fundo ou ícone simbólico ligado ao tema, sem sobrecarregar a capa.
+- Evitar overlay de texto muito complexo ou efeitos que dificultem a leitura.
+
+## 11. PADRÃO PARA TODOS OS EBOOKS
+
+- Usar sempre:
+  - Título da capa em fonte única e 100% legível.
+  - Mesma hierarquia de títulos (H1 24, H2 20, H3 18).
+  - Seção de **REFERÊNCIAS** ABNT no final, se houver citações.
+- Manter este arquivo de orientações como script padrão para todos os e‑books criados.
+
+---
+
+Este arquivo `.txt` pode ser usado diretamente como base de configuração para você ou para sua API de diagramação automatizar formatação e revisão de e‑books destinados a leitura em celular. Se quiser, posso gerar também um pequeno script em Python/JavaScript que consiga ler um texto bruto e aplicar automaticamente essas regras de tamanho de fonte e hierarquia.
+
+
