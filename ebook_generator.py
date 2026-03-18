@@ -1,59 +1,36 @@
 """
 Nome do Script: ebook_generator.py
 Autor: Renato Borges
-Versão: 2.2.1
-Propósito: Engine de diagramação mobile-first com foco em 18pt e entrelinha 1.5.
+Versão: 2.2.2
+Propósito: Diagramação Mobile-First (Fonte 18pt, Entrelinha 1.5).
 """
 
-import logging
-from typing import List, Dict
 from docx import Document
 from docx.shared import Pt, Cm
 from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_LINE_SPACING
 from docx.oxml import OxmlElement, ns
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-
 class EbookEngine:
     def __init__(self, title: str):
         self.title = title
         self.doc = Document()
-        self._setup_mobile_canvas()
-        self._apply_styles()
+        self._setup()
 
-    def _setup_mobile_canvas(self):
-        """Configura margens de 2cm e mancha de texto para celular[cite: 12]."""
+    def _setup(self):
         section = self.doc.sections[0]
-        section.top_margin = Cm(2.5) [cite: 12]
-        section.bottom_margin = Cm(2.0) [cite: 12]
-        section.left_margin = Cm(2.0) [cite: 12]
-        section.right_margin = Cm(2.0) [cite: 12]
-        # Reduz largura da página para simular tela de smartphone
-        section.page_width = Cm(14.8) 
+        section.page_width = Cm(14.8) # Largura Mobile
+        section.top_margin, section.bottom_margin = Cm(2.5), Cm(2.0)
+        section.left_margin, section.right_margin = Cm(2.0), Cm(2.0)
 
-    def _apply_styles(self):
-        """Aplica tipografia: Corpo 18pt, H1 24pt, H2 20pt[cite: 4, 7, 8]."""
-        styles = self.doc.styles
-        
-        # Corpo do Texto - Arial 18pt, Entrelinha 1.5 [cite: 4, 5, 6]
-        n = styles['Normal']
-        n.font.name = 'Arial' [cite: 5]
-        n.font.size = Pt(18) [cite: 4]
-        n.paragraph_format.line_spacing_rule = WD_LINE_SPACING.ONE_POINT_FIVE [cite: 6]
-        n.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.LEFT [cite: 6]
-        n.paragraph_format.space_after = Pt(18) [cite: 19]
-
-        # H1 - Título de Capítulo (24pt) [cite: 7]
-        h1 = styles['Heading 1']
-        h1.font.name, h1.font.size, h1.font.bold = 'Arial', Pt(24), True [cite: 7]
-        
-        # H2 - Subtítulo (20pt) [cite: 8]
-        h2 = styles['Heading 2']
-        h2.font.name, h2.font.size, h2.font.bold = 'Arial', Pt(20), True [cite: 8]
+        # Estilo Normal (Corpo do Texto)
+        style = self.doc.styles['Normal']
+        style.font.name = 'Arial'
+        style.font.size = Pt(18)
+        style.paragraph_format.line_spacing_rule = WD_LINE_SPACING.ONE_POINT_FIVE
+        style.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.LEFT
+        style.paragraph_format.space_after = Pt(12)
 
     def _add_page_number(self, paragraph):
-        """Insere numeração no rodapé centralizado[cite: 15]."""
         run = paragraph.add_run()
         fldChar1 = OxmlElement('w:fldChar'); fldChar1.set(ns.qn('w:fldCharType'), 'begin')
         instrText = OxmlElement('w:instrText'); instrText.set(ns.qn('xml:space'), 'preserve'); instrText.text = "PAGE"
@@ -61,26 +38,25 @@ class EbookEngine:
         fldChar3 = OxmlElement('w:fldChar'); fldChar3.set(ns.qn('w:fldCharType'), 'end')
         run._r.extend([fldChar1, instrText, fldChar2, fldChar3])
 
-    def build_ebook(self, content: List[Dict], output_path: str):
-        """Método principal para geração do .docx[cite: 33]."""
-        # Capa [cite: 41, 45]
+    def build_ebook(self, content: list, output_path: str):
+        """Método sincronizado com main.py"""
+        # Capa
         p = self.doc.add_paragraph()
         p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        run = p.add_run(f"\n\n\n{self.title.upper()}") [cite: 45]
+        run = p.add_run(f"\n\n\n{self.title.upper()}")
         run.font.size, run.font.bold = Pt(32), True
-        self.doc.add_page_break() [cite: 18]
+        self.doc.add_page_break()
 
         for block in content:
-            t, txt = block.get("type"), block.get("text", "").strip()
-            if not txt: continue
+            t, txt = block.get("type"), block.get("text", "")
             if t == "h1":
-                self.doc.add_page_break() [cite: 18]
+                self.doc.add_page_break()
                 self.doc.add_heading(txt, level=1)
-            elif t == "h2": self.doc.add_heading(txt, level=2)
-            else: self.doc.add_paragraph(txt)
+            elif t == "h2":
+                self.doc.add_heading(txt, level=2)
+            else:
+                self.doc.add_paragraph(txt)
 
-        # Rodapé [cite: 15]
         footer = self.doc.sections[0].footer
         self._add_page_number(footer.paragraphs[0])
-        footer.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER [cite: 15]
         self.doc.save(output_path)
