@@ -1,7 +1,8 @@
-# Dependências do Ebook Generator Pro
 # Autor: Renato Borges
+# Forçando versões estáveis para evitar Erro 500
 fastapi==0.115.0
 uvicorn[standard]==0.30.6
 python-multipart==0.0.9
 python-docx==1.1.2
 httpx==0.27.0
+pydantic==2.9.1
