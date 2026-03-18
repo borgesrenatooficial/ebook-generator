@@ -1,10 +1,10 @@
 """
-Nome do Script: ebook_architect_bncc.py
+Nome do Script: ebook_generator_bncc.py
 Autor: Renato Borges
 Data: 18 de Março de 2026
-Versão: 2.4.0
-Propósito: Diagramação profissional de eBook .docx com foco em BNCC Computação.
-           Configurações: H1 (28pt), H2 (22pt), Corpo (18pt), Mobile-First.
+Versão: 2.3.0
+Propósito: Diagramação de alto padrão para o Ebook BNCC da Computação.
+           Foco em legibilidade (18pt) e hierarquia visual (H1 28, H2 22).
 """
 
 import logging
@@ -13,100 +13,115 @@ from docx.shared import Pt, Cm, RGBColor
 from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_LINE_SPACING
 from docx.oxml import OxmlElement, ns
 
-# Setup de Logging para monitoramento de execução
+# Configuração de Logging para auditoria de processos
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-class EbookGenerator:
+class EbookEngine:
     def __init__(self, title: str):
-        self.doc = Document()
+        """
+        Inicializa o documento com o título fornecido.
+        :param title: Título principal do eBook.
+        """
         self.title = title
-        self._apply_master_settings()
+        self.doc = Document()
+        self._setup_styles()
+        logging.info(f"Engine iniciada para: {self.title}")
 
-    def _apply_master_settings(self):
-        """Define o setup de página e estilos globais."""
+    def _setup_styles(self):
+        """
+        Configura a tipografia e o layout da página seguindo a teoria das cores.
+        """
         section = self.doc.sections[0]
-        # Largura otimizada para leitura em dispositivos móveis (Mobile-First)
-        section.page_width = Cm(14.8)
-        section.top_margin = Cm(2.0)
-        section.bottom_margin = Cm(2.0)
+        # Layout Mobile-Friendly (A5 aproximado para leitura digital)
+        section.page_width = Cm(15.0)
+        section.left_margin = section.right_margin = Cm(2.0)
+        
+        # Estilo Normal (Corpo do Texto) - 18pt [Diretriz do Usuário]
+        style = self.doc.styles['Normal']
+        style.font.name = 'Calibri'
+        style.font.size = Pt(18)
+        style.paragraph_format.line_spacing = 1.5
+        style.paragraph_format.space_after = Pt(14)
+        
+        # Heading 1 (Capítulos) - 28pt
+        h1 = self.doc.styles['Heading 1']
+        h1.font.name = 'Arial'
+        h1.font.size = Pt(28)
+        h1.font.bold = True
+        h1.font.color.rgb = RGBColor(31, 56, 100) # Azul Profundo BNCC
+        
+        # Heading 2 (Subtítulos/Questões) - 22pt
+        h2 = self.doc.styles['Heading 2']
+        h2.font.name = 'Arial'
+        h2.font.size = Pt(22)
+        h2.font.bold = True
+        h2.font.color.rgb = RGBColor(64, 64, 64) # Cinza Grafite
 
-        # Configuração Estilo Normal (Corpo do Texto - 18pt)
-        style_n = self.doc.styles['Normal']
-        style_n.font.name = 'Calibri'
-        style_n.font.size = Pt(18)
-        style_n.paragraph_format.line_spacing = 1.5
-        style_n.paragraph_format.space_after = Pt(12)
-        style_n.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.BOTH
-
-        # Configuração Heading 1 (Capítulos - 28pt)
-        style_h1 = self.doc.styles['Heading 1']
-        style_h1.font.name = 'Arial'
-        style_h1.font.size = Pt(28)
-        style_h1.font.bold = True
-        style_h1.font.color.rgb = RGBColor(31, 56, 100) # Azul Escuro
-
-        # Configuração Heading 2 (Subtítulos - 22pt)
-        style_h2 = self.doc.styles['Heading 2']
-        style_h2.font.name = 'Arial'
-        style_h2.font.size = Pt(22)
-        style_h2.font.bold = True
-        style_h2.font.color.rgb = RGBColor(64, 64, 64) # Cinza Grafite
-
-    def add_page_number(self, paragraph):
-        """Insere numeração de página automática no centro do rodapé."""
+    def _add_page_number(self, paragraph):
+        """
+        Insere o código XML para numeração dinâmica de páginas.
+        """
         paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
         run = paragraph.add_run()
         
-        fldChar1 = OxmlElement('w:fldChar'); fldChar1.set(ns.qn('w:fldCharType'), 'begin')
-        instrText = OxmlElement('w:instrText'); instrText.set(ns.qn('xml:space'), 'preserve'); instrText.text = "PAGE"
-        fldChar2 = OxmlElement('w:fldChar'); fldChar2.set(ns.qn('w:fldCharType'), 'separate')
-        fldChar3 = OxmlElement('w:fldChar'); fldChar3.set(ns.qn('w:fldCharType'), 'end')
+        def make_element(name):
+            return OxmlElement(name)
+
+        fldChar1 = make_element('w:fldChar'); fldChar1.set(ns.qn('w:fldCharType'), 'begin')
+        instrText = make_element('w:instrText'); instrText.set(ns.qn('xml:space'), 'preserve'); instrText.text = "PAGE"
+        fldChar2 = make_element('w:fldChar'); fldChar2.set(ns.qn('w:fldCharType'), 'separate')
+        fldChar3 = make_element('w:fldChar'); fldChar3.set(ns.qn('w:fldCharType'), 'end')
         
         run._r.extend([fldChar1, instrText, fldChar2, fldChar3])
 
-    def create_ebook(self, content_list: list, filename: str):
-        """Monta o documento com base na lista de blocos."""
+    def generate(self, content: list, filename: str):
+        """
+        Executa a construção do eBook baseada em blocos de conteúdo.
+        """
         try:
-            # Capa
-            capa = self.doc.add_paragraph()
-            capa.alignment = WD_ALIGN_PARAGRAPH.CENTER
-            run_capa = capa.add_run(f"\n\n\n{self.title.upper()}")
-            run_capa.font.size, run_capa.bold = Pt(32), True
+            # Capa Profissional
+            p = self.doc.add_paragraph()
+            p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            run = p.add_run(f"\n\n\n{self.title.upper()}\n")
+            run.font.size, run.bold = Pt(32), True
             self.doc.add_page_break()
 
-            # Processamento Dinâmico
-            for block in content_list:
-                tag = block.get("type")
-                txt = block.get("text", "")
-
-                if tag == "h1":
-                    self.doc.add_heading(txt, level=1)
-                elif tag == "h2":
-                    self.doc.add_heading(txt, level=2)
+            # Processamento de Blocos [cite: 36, 40, 53]
+            for block in content:
+                type_ = block.get("type")
+                text = block.get("text", "")
+                
+                if type_ == "h1":
+                    self.doc.add_heading(text, level=1)
+                elif type_ == "h2":
+                    self.doc.add_heading(text, level=2)
                 else:
-                    self.doc.add_paragraph(txt)
+                    para = self.doc.add_paragraph(text)
+                    para.alignment = WD_ALIGN_PARAGRAPH.BOTH
+                
+                if block.get("break"):
+                    self.doc.add_page_break()
 
-            # Rodapé
-            footer = self.doc.sections[0].footer
-            self.add_page_number(footer.paragraphs[0])
-
+            # Rodapé com Página
+            self._add_page_number(self.doc.sections[0].footer.paragraphs[0])
+            
             self.doc.save(filename)
-            logging.info(f"✅ Ebook '{filename}' gerado com sucesso!")
+            logging.info(f"Arquivo {filename} gerado com sucesso.")
         except Exception as e:
-            logging.error(f"❌ Falha crítica: {e}")
+            logging.error(f"Erro na geração: {e}")
 
 if __name__ == "__main__":
-    # Conteúdo estruturado conforme o Documento Base [cite: 7, 35, 52]
-    data = [
-        {"type": "h1", "text": "INTRODUÇÃO"},
+    # Conteúdo estruturado a partir do Documento Base [cite: 7, 34, 111]
+    ebook_data = [
+        {"type": "h1", "text": "INTRODUÇÃO", "break": False},
         {"type": "p", "text": "A inserção da Computação na Educação Básica é uma das maiores inovações curriculares do nosso tempo. [cite: 29]"},
-        {"type": "h1", "text": "CAPÍTULO 1: IMPLEMENTAÇÃO"},
-        {"type": "h2", "text": "A escola precisa de uma disciplina nova?"},
-        {"type": "p", "text": "Não. A orientação para a RME-Goiânia é a abordagem transversal, integrando habilidades aos componentes já existentes. "},
-        {"type": "h1", "text": "CONCLUSÃO"},
-        {"type": "p", "text": "O futuro constrói-se na sua sala de aula! [cite: 116]"}
+        {"type": "h1", "text": "CAPÍTULO 1", "break": False},
+        {"type": "h2", "text": "Implementação na Escola e no PPP", "break": False},
+        {"type": "p", "text": "A escola não precisa criar uma disciplina nova. A orientação é trabalhar de forma transversal. [cite: 36, 38]"},
+        {"type": "h1", "text": "CONCLUSÃO", "break": False},
+        {"type": "p", "text": "O objetivo é preparar os alunos para pensarem de forma estruturada e ética. [cite: 113, 114]"}
     ]
 
-    # Instanciação e Execução
-    engineer = EbookGenerator("BNCC DA COMPUTAÇÃO")
-    engineer.create_ebook(data, "Ebook_BNCC_Computacao_RenatoBorges.docx")
+    # Execução
+    app = EbookEngine("BNCC DA COMPUTAÇÃO")
+    app.generate(ebook_data, "Ebook_BNCC_Final_V2.3.docx")
