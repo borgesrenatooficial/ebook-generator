@@ -1,161 +1,82 @@
 """
 Nome do Script: main.py
 Autor: Renato Borges
-Data: 18 de Março de 2026
 Versão: 1.1.0
-Propósito: API FastAPI para interfaceamento com o Plugin WordPress.
+Propósito: API FastAPI com gestão automática de arquivos temporários.
 """
 
 from fastapi import FastAPI, UploadFile, File, Form, BackgroundTasks, HTTPException
 from fastapi.responses import StreamingResponse
 import os, uuid, logging
 from ebook_generator import EbookEngine
-from docx import Document as DocxReader
 
 app = FastAPI()
 logger = logging.getLogger("uvicorn")
 
-def remove_temp_files(*filepaths):
-    """Garante que o storage do Railway não fique cheio."""
-    for f in filepaths:
-        if os.path.exists(f): os.remove(f)
+def cleanup(files: list):
+    """Remove arquivos temporários do servidor."""
+    for f in files:
+        if os.path.exists(f): 
+            os.remove(f)
+            logger.info(f"Removido: {f}")
 
-def parse_txt(file_bytes: bytes) -> list:
-    """Decodifica texto e identifica hierarquia Markdown (# e ##)."""
+def parse_txt_safe(content_bytes: bytes) -> list:
+    """Tenta UTF-8 e faz fallback para Latin-1."""
     try:
-        content = file_bytes.decode('utf-8')
+        text = content_bytes.decode('utf-8')
     except UnicodeDecodeError:
-        content = file_bytes.decode('latin-1') # Fallback para arquivos Windows
+        text = content_bytes.decode('latin-1')
     
-    data = []
-    for line in content.splitlines():
+    parsed = []
+    for line in text.splitlines():
         line = line.strip()
         if not line: continue
-        if line.startswith("# "): data.append({"type": "h1", "text": line[2:]})
-        elif line.startswith("## "): data.append({"type": "h2", "text": line[3:]})
-        else: data.append({"type": "p", "text": line})
-    return data
+        if line.startswith("# "): parsed.append({"type": "h1", "text": line[2:]})
+        elif line.startswith("## "): parsed.append({"type": "h2", "text": line[3:]})
+        else: parsed.append({"type": "p", "text": line})
+    return parsed
 
 @app.post("/upload-ebook/")
-async def handle_upload(
+async def upload_ebook(
     bg: BackgroundTasks,
     title: str = Form(...),
     filename: str = Form("ebook.docx"),
     file: UploadFile = File(...)
 ):
-    temp_id = str(uuid.uuid4())
-    in_path = f"in_{temp_id}_{file.filename}"
-    out_path = f"out_{temp_id}.docx"
+    uid = str(uuid.uuid4())
+    in_file = f"in_{uid}_{file.filename}"
+    out_file = f"out_{uid}.docx"
 
     try:
         content = await file.read()
-        with open(in_path, "wb") as f: f.write(content)
+        with open(in_file, "wb") as f: f.write(content)
 
-        # Seleção de Parser
+        # Processamento
         if file.filename.endswith('.txt'):
-            parsed_content = parse_txt(content)
+            data = parse_txt_safe(content)
         else:
-            doc = DocxReader(in_path)
-            parsed_content = [{"type": "p", "text": p.text} for p in doc.paragraphs if p.text.strip()]
+            # Para DOCX, no momento extraímos texto bruto (melhoria futura: manter estilos)
+            from docx import Document as DocxReader
+            doc = DocxReader(in_file)
+            data = [{"type": "p", "text": p.text} for p in doc.paragraphs if p.text.strip()]
 
-        # Geração
         engine = EbookEngine(title)
-        engine.build(parsed_content, out_path)
+        engine.build_ebook(data, out_file)
 
-        # Stream do resultado
-        file_stream = open(out_path, mode="rb")
-        bg.add_task(remove_temp_files, in_path, out_path)
+        # Retorno via Stream
+        file_handle = open(out_file, mode="rb")
+        bg.add_task(cleanup, [in_file, out_file])
 
         return StreamingResponse(
-            file_stream,
+            file_handle,
             media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
             headers={"Content-Disposition": f"attachment; filename={filename}"}
         )
 
     except Exception as e:
-        remove_temp_files(in_path, out_path)
-        logger.error(f"Erro Crítico: {e}")
-        raise HTTPException(status_code=500, detail="Erro interno no processamento.")
+        cleanup([in_file, out_file])
+        logger.error(f"Erro na API: {e}")
+        raise HTTPException(status_code=500, detail="Erro interno no processamento do Ebook.")
 
 @app.get("/")
-def health(): return {"status": "ok"}"""
-Nome do Script: main.py
-Autor: Renato Borges
-Data: 18 de Março de 2026
-Versão: 1.1.0
-Propósito: API FastAPI para interfaceamento com o Plugin WordPress.
-"""
-
-from fastapi import FastAPI, UploadFile, File, Form, BackgroundTasks, HTTPException
-from fastapi.responses import StreamingResponse
-import os, uuid, logging
-from ebook_generator import EbookEngine
-from docx import Document as DocxReader
-
-app = FastAPI()
-logger = logging.getLogger("uvicorn")
-
-def remove_temp_files(*filepaths):
-    """Garante que o storage do Railway não fique cheio."""
-    for f in filepaths:
-        if os.path.exists(f): os.remove(f)
-
-def parse_txt(file_bytes: bytes) -> list:
-    """Decodifica texto e identifica hierarquia Markdown (# e ##)."""
-    try:
-        content = file_bytes.decode('utf-8')
-    except UnicodeDecodeError:
-        content = file_bytes.decode('latin-1') # Fallback para arquivos Windows
-    
-    data = []
-    for line in content.splitlines():
-        line = line.strip()
-        if not line: continue
-        if line.startswith("# "): data.append({"type": "h1", "text": line[2:]})
-        elif line.startswith("## "): data.append({"type": "h2", "text": line[3:]})
-        else: data.append({"type": "p", "text": line})
-    return data
-
-@app.post("/upload-ebook/")
-async def handle_upload(
-    bg: BackgroundTasks,
-    title: str = Form(...),
-    filename: str = Form("ebook.docx"),
-    file: UploadFile = File(...)
-):
-    temp_id = str(uuid.uuid4())
-    in_path = f"in_{temp_id}_{file.filename}"
-    out_path = f"out_{temp_id}.docx"
-
-    try:
-        content = await file.read()
-        with open(in_path, "wb") as f: f.write(content)
-
-        # Seleção de Parser
-        if file.filename.endswith('.txt'):
-            parsed_content = parse_txt(content)
-        else:
-            doc = DocxReader(in_path)
-            parsed_content = [{"type": "p", "text": p.text} for p in doc.paragraphs if p.text.strip()]
-
-        # Geração
-        engine = EbookEngine(title)
-        engine.build(parsed_content, out_path)
-
-        # Stream do resultado
-        file_stream = open(out_path, mode="rb")
-        bg.add_task(remove_temp_files, in_path, out_path)
-
-        return StreamingResponse(
-            file_stream,
-            media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-            headers={"Content-Disposition": f"attachment; filename={filename}"}
-        )
-
-    except Exception as e:
-        remove_temp_files(in_path, out_path)
-        logger.error(f"Erro Crítico: {e}")
-        raise HTTPException(status_code=500, detail="Erro interno no processamento.")
-
-@app.get("/")
-def health(): return {"status": "ok"}
+def health(): return {"status": "online", "engine": "EbookEngine 1.1.0"}
