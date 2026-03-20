@@ -1,9 +1,22 @@
 # Autor: Renato Borges
-# Projeto: Ebook Generator Pro (v1.2.7)
-# Data: 18 de Março de 2026
+# Projeto: Ebook Generator Pro (v2.8.0 - Mobile Optimized)
+# Data: 20 de Março de 2026
+# Descrição: Dependências para API, Processamento de Imagem (Capa), 
+#             Manipulação de DOCX (Mobile 18pt) e Extração de PDF.
+# --- Core Web Framework ---
 fastapi==0.115.0
 uvicorn[standard]==0.30.6
 python-multipart==0.0.9
-python-docx==1.1.2
-httpx==0.27.0
 pydantic==2.9.1
+
+# --- Document & Text Processing ---
+python-docx==1.1.2         # Exportação final seguindo diretrizes de 18pt
+PyPDF2==3.0.1              # Extração de texto do PDF BNCC/DC-GO [cite: 148]
+langchain==0.3.0           # Orquestração da lógica do BrainProcessor
+
+# --- Image Generation (Tela 2) ---
+Pillow==10.4.0             # Geração de capas e gradientes dinâmicos
+
+# --- API Clients & Utilities ---
+httpx==0.27.0              # Integração com APIs de IA (Perplexity/OpenAI)
+python-dotenv==1.0.1       # Gestão segura de chaves de API
