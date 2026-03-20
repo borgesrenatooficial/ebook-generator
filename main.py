@@ -2,55 +2,106 @@
 Nome do Script: main.py
 Autor: Renato Borges
 Data: 20 de Março de 2026
-Versão: 2.5.0
-Propósito: Ponto de entrada do Ebook Generator. Orquestra Upload, Design e IA.
+Version: 2.6.0
+Propósito: Script principal de orquestração do Ebook Generator. 
+           Integra Upload (Tela 1), Design (Tela 2) e Brain Processor (Tela 3).
 """
 
 import logging
-from typing import Optional
-# Importando os novos módulos que seguem sua estrutura
-# from manuscript_loader import ManuscriptProcessor 
+import os
+from typing import Optional, Dict, Any
 
-# Configuração de Logging Profissional
+# Importação dos módulos especialistas (Devem estar na mesma pasta ou PYTHONPATH)
+from manuscript_loader import ManuscriptProcessor
+from brain_processor import BrainProcessor
+
+# Configuração de Logging Profissional para monitoramento de automação
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[logging.FileHandler("ebook_gen.log"), logging.StreamHandler()]
+    handlers=[
+        logging.FileHandler("execution_log.log"),
+        logging.StreamHandler()
+    ]
 )
 logger = logging.getLogger("MainOrchestrator")
 
-class EbookGeneratorMain:
-    """Gerencia o fluxo principal do gerador de ebooks."""
+class EbookGenerator:
+    """
+    Classe principal que coordena a pipeline de criação do ebook.
+    Especializada em automação de conteúdo para educação e tecnologia.
+    """
 
-    def __init__(self):
-        """Inicializa os componentes de automação."""
-        self.version = "2.5.0"
-        logger.info(f"Iniciando Ebook Generator V{self.version}")
-
-    def executar_fluxo_tela_1(self, caminho_arquivo: str, nome_ebook: str):
+    def __init__(self, pdf_context_path: str):
         """
-        Lógica da Tela 1: Recebe o DOCX/TXT e valida o projeto.
+        Inicializa os componentes do sistema.
         
         Args:
-            caminho_arquivo (str): Path do arquivo enviado no upload.
-            nome_ebook (str): Nome definido pelo usuário na interface.
+            pdf_context_path (str): Caminho do PDF BNCC/DC-GO para a base de conhecimento.
         """
-        logger.info(f"Processando Upload: {nome_ebook}")
-        # Aqui chamaremos o manuscript_loader.py que criamos
-        # conteudo = self.processor.load(caminho_arquivo)
-        # if conteudo:
-        #    self.seguir_para_tela_2(conteudo)
+        self.loader = ManuscriptProcessor()
+        self.brain = BrainProcessor(pdf_context_path)
+        self.current_project: Dict[str, Any] = {}
+        logger.info("Sistema Ebook Generator inicializado com sucesso.")
 
-    def executar_fluxo_tela_3(self, conteudo_formatado: str):
+    def iniciar_novo_projeto(self, nome_ebook: str, arquivo_path: str) -> bool:
         """
-        Lógica da Tela 3: Aplica revisões de IA e formatação.
+        Executa a lógica da Tela 1: Identificação e Ingestão de texto.
+        Suporta apenas DOCX e TXT conforme especificado.
         """
-        logger.info("Iniciando fase de formatação e revisão IA.")
-        # Lógica de integração com o PDF da BNCC de Computação
-        pass
+        logger.info(f"Iniciando projeto: {nome_ebook}")
+        
+        # Extração do conteúdo bruto (Manuscrito)
+        conteudo_bruto = self.loader.load(arquivo_path)
+        
+        if not conteudo_bruto:
+            logger.error("Falha ao carregar o manuscrito. Verifique o arquivo.")
+            return False
+
+        self.current_project = {
+            "nome": nome_ebook,
+            "conteudo_original": conteudo_bruto,
+            "path_origem": arquivo_path,
+            "status": "TELA_1_CONCLUIDA"
+        }
+        
+        logger.info(f"Conteúdo de {nome_ebook} carregado com sucesso.")
+        return True
+
+    def preparar_revisao_ia(self) -> str:
+        """
+        Executa a lógica da Tela 3: Aciona o cérebro para analisar o texto
+        com base no PDF da BNCC de Computação.
+        """
+        if "conteudo_original" not in self.current_project:
+            logger.error("Nenhum projeto ativo para revisão.")
+            return "Erro: Projeto não inicializado."
+
+        logger.info("Solicitando análise pedagógica ao BrainProcessor...")
+        texto = self.current_project["conteudo_original"]
+        
+        # Gera sugestões baseadas no PDF (ex: Transversalidade, Eixos, Avaliação)
+        sugestoes = self.brain.analyze_pedagogy(texto)
+        
+        # Retorna o texto formatado para o painel lateral da Tela 3
+        return self.brain.format_for_display(sugestoes)
 
 # Autor: Renato Borges
 
 if __name__ == "__main__":
-    app = EbookGeneratorMain()
-    # O main.py agora aguarda as interações das rotas da interface
+    # Exemplo de fluxo de execução simulando a interação do usuário
+    # Caminho do seu PDF de referência anexado
+    CAMINHO_PDF = "EBOOK-FEQ-BNCC-DA-COMPUTACAO-Professorrenato-com.pdf"
+    
+    app = EbookGenerator(CAMINHO_PDF)
+    
+    # Simulação: Usuário faz upload de um DOCX na Tela 1
+    sucesso = app.iniciar_novo_projeto(
+        nome_ebook="Manual de Computação Básica", 
+        arquivo_path="manuscrito_teste.docx" # Arquivo de exemplo
+    )
+    
+    if sucesso:
+        # Simulação: Usuário clica em 'Revisão por IA' na Tela 3
+        resultado_ia = app.preparar_revisao_ia()
+        print(resultado_ia)
