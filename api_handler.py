@@ -3,63 +3,63 @@ Nome do Script: api_handler.py
 Autor: Renato Borges
 Data: 22 de Março de 2026
 Versão: 3.2.0
-Propósito: API robusta para suportar o workflow de 3 etapas do WordPress.
+Propósito: API de Workflow para suportar as 3 telas do Plugin WordPress.
 """
 
-from fastapi import FastAPI, UploadFile, File, Form, HTTPException
-from uuid import uuid4
+import logging
 import os
 import shutil
-
-# Importação dos módulos core revisados
-from manuscript_loader import ManuscriptProcessor
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException
+from fastapi.responses import FileResponse, JSON_Response
+from typing import Optional
+from main import EbookGenerator #
 
 app = FastAPI()
-loader = ManuscriptProcessor()
+CAMINHO_BNCC = "EBOOK-FEQ-BNCC-DA-COMPUTACAO-Professorrenato-com.pdf"
+engine = EbookGenerator(CAMINHO_BNCC) #
 
-# Dicionário em memória para demonstração (Em produção, use Redis ou Banco de Dados)
-projects_db = {}
-
-@app.post("/workflow/step1-upload")
-async def step1_upload(
+@app.post("/workflow/preview-capa")
+async def preview_capa(
     title: str = Form(...),
-    file: UploadFile = File(...)
+    author: str = Form(...),
+    color1: str = Form(...),
+    color2: str = Form(...),
+    angle: int = Form(...)
 ):
-    """
-    Recebe os dados da Tela 1: Nome do Ebook e Arquivo (DOCX/TXT).
-    """
-    project_id = str(uuid4())
-    temp_path = f"storage/{project_id}_{file.filename}"
-    
-    # Criar pasta de storage se não existir
-    os.makedirs("storage", exist_ok=True)
+    """Gera um preview rápido da capa para a Tela 2."""
+    path = engine.cover_factory.generate_cover(
+        title=title, author=author, colors=[color1, color2], angle=angle
+    ) #
+    return FileResponse(path)
 
+@app.post("/process-full-workflow/")
+async def process_full_workflow(
+    file: UploadFile = File(...),
+    title: str = Form(...),
+    author: str = Form(...),
+    subtitle: Optional[str] = Form(None),
+    color1: str = Form(...),
+    color2: str = Form(...),
+    angle: int = Form(...),
+    filename: str = Form(...)
+):
+    """Executa a esteira completa: Ingestão -> Capa -> IA -> DOCX 18pt."""
+    temp_path = f"temp_{file.filename}"
     try:
-        # Salva o manuscrito temporariamente
         with open(temp_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
-        
-        # Extrai o conteúdo para validação inicial
-        content = loader.load(temp_path)
-        
-        if not content:
-            raise HTTPException(status_code=400, detail="Arquivo inválido ou vazio.")
+            shutil.copyfileobj(file.file, buffer) #
 
-        # Armazena o estado inicial do projeto
-        projects_db[project_id] = {
-            "title": title,
-            "raw_content": content,
-            "file_path": temp_path,
-            "status": "Aguardando Design"
-        }
-
-        return {
-            "status": "success",
-            "project_id": project_id,
-            "message": "Upload concluído. Prossiga para a Etapa 2."
-        }
-    except Exception as e:
+        # Etapa 1: Ingestão
+        engine.executar_tela_1_upload(title, temp_path)
+        
+        # Etapa 2: Design
+        engine.executar_tela_2_design([color1, color2], angle, author, subtitle)
+        
+        # Etapa 3: Revisão IA
+        engine.executar_tela_3_ia_revisao()
+        
+        # Exportação Final 18pt
+        path_final = engine.finalizar_e_exportar(filename)
+        return FileResponse(path_final)
+    finally:
         if os.path.exists(temp_path): os.remove(temp_path)
-        raise HTTPException(status_code=500, detail=str(e))
-
-# Autor: Renato Borges
