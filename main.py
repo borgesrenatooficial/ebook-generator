@@ -1,31 +1,28 @@
 """
 Nome do Script: main.py
 Autor: Renato Borges
-Data: 20 de Março de 2026
-Versão: 2.8.0
-Propósito: Orquestrador central do Ebook Generator. Integra todas as fases:
-           1. Ingestão de Manuscritos (DOCX/TXT)
-           2. Geração de Design de Capa (Gradientes/Tipografia)
-           3. Revisão Pedagógica com IA (Baseada no DC-GO/BNCC Computação)
-           4. Exportação Final de Documento (DOCX)
+Data: 22 de Março de 2026
+Versão: 3.0.0
+Propósito: Orquestrador central focado em Layout Mobile-First. 
+           Integra Ingestão, Design de Capa e IA de Diagramação Estrutural.
 """
 
 import logging
 import os
 from typing import List, Optional, Dict, Any
 
-# Importação dos módulos especialistas desenvolvidos na pipeline
+# Importação dos módulos especialistas da pipeline
 from manuscript_loader import ManuscriptProcessor
 from brain_processor import BrainProcessor
 from cover_generator import CoverGenerator
 from docx_export import DocxExporter
 
-# Configuração de Logging Profissional para monitoramento de processos de trading de dados
+# Configuração de Logging Profissional para monitoramento de workflow
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler("ebook_generator_core.log"),
+        logging.FileHandler("ebook_workflow.log"),
         logging.StreamHandler()
     ]
 )
@@ -33,55 +30,48 @@ logger = logging.getLogger("MainOrchestrator")
 
 class EbookGenerator:
     """
-    Controlador Sênior para automação e geração de materiais didáticos.
-    Gerencia o estado do projeto através das três etapas da interface.
+    Controlador do Workflow de 3 Etapas. 
+    Foco: Transformar manuscritos em DOCX 18pt sem erros de quebra estrutural.
     """
 
-    def __init__(self, pdf_context_path: str):
+    def __init__(self, context_pdf_path: Optional[str] = None):
         """
-        Inicializa o motor de geração com o contexto pedagógico necessário.
-        
-        Args:
-            pdf_context_path (str): Caminho para o PDF da BNCC da Computação (DC-GO).
+        Inicializa o motor com foco em otimização de layout.
         """
         self.loader = ManuscriptProcessor()
-        self.brain = BrainProcessor(pdf_context_path)
+        self.brain = BrainProcessor(context_pdf_path) # IA de Layout
         self.cover_factory = CoverGenerator()
         self.exporter = DocxExporter()
         
-        # Armazenamento de estado do projeto ativo
+        # Armazenamento de estado do projeto
         self.project_data: Dict[str, Any] = {
             "titulo": "",
             "subtitulo": None,
             "autor": "Renato Borges",
-            "manuscrito_original": "",
-            "manuscrito_revisado": "",
+            "conteudo_bruto": "",
+            "conteudo_otimizado": "",
             "capa_path": "",
             "status": "INICIALIZADO"
         }
-        logger.info(f"Ebook Generator V2.8.0 iniciado. Contexto: {os.path.basename(pdf_context_path)}")
+        logger.info("Ebook Generator V3.0.0 iniciado com foco em Diagramação Mobile.")
 
-    def executar_tela_1_upload(self, nome_ebook: str, arquivo_path: str) -> bool:
-        """
-        Processa o upload inicial e extração de texto (DOCX/TXT).
-        """
-        logger.info(f"Executando Etapa 1: Upload de '{nome_ebook}'")
-        conteudo = self.loader.load(arquivo_path)
+    def executar_tela_1_upload(self, titulo: str, arquivo_path: str) -> bool:
+        """Etapa 1: Ingestão e Identificação do Manuscrito."""
+        logger.info(f"Executando Etapa 1: Upload de '{titulo}'")
+        texto = self.loader.load(arquivo_path)
         
-        if not conteudo:
-            logger.error("Falha na ingestão do arquivo. Abortando processo.")
+        if not texto:
+            logger.error("Falha na ingestão do arquivo.")
             return False
         
-        self.project_data["titulo"] = nome_ebook
-        self.project_data["manuscrito_original"] = conteudo
-        self.project_data["status"] = "UPLOAD_CONCLUIDO"
+        self.project_data["titulo"] = titulo
+        self.project_data["conteudo_bruto"] = texto
+        self.project_data["status"] = "TELA_1_OK"
         return True
 
     def executar_tela_2_design(self, cores: List[str], angulo: int, autor: str, subtitulo: Optional[str] = None):
-        """
-        Gera a identidade visual da capa conforme inputs da interface.
-        """
-        logger.info("Executando Etapa 2: Geração de Design da Capa.")
+        """Etapa 2: Geração da Identidade Visual da Capa."""
+        logger.info("Executando Etapa 2: Design de Capa.")
         self.project_data["autor"] = autor
         self.project_data["subtitulo"] = subtitulo
         
@@ -94,33 +84,28 @@ class EbookGenerator:
             output_path=f"capa_{self.project_data['titulo'].replace(' ', '_')}.png"
         )
         self.project_data["capa_path"] = path_gerado
-        self.project_data["status"] = "DESIGN_CONCLUIDO"
+        self.project_data["status"] = "TELA_2_OK"
 
-    def executar_tela_3_ia_revisao(self) -> str:
-        """
-        Processa o manuscrito com o cérebro de IA baseado no PDF da BNCC.
-        Retorna as sugestões formatadas para o painel de revisão.
-        """
-        logger.info("Executando Etapa 3: Revisão Pedagógica IA.")
-        manuscrito = self.project_data["manuscrito_original"]
+    def executar_tela_3_diagramacao_ia(self) -> str:
+        """Etapa 3: IA de Otimização Estrutural (Anti-Quebra)."""
+        logger.info("Executando Etapa 3: IA de Diagramação.")
+        texto_original = self.project_data["conteudo_bruto"]
         
-        # O BrainProcessor analisa termos como 'Mundo Digital' e 'Pensamento Computacional'
-        sugestoes_analise = self.brain.analyze_pedagogy(manuscrito)
+        # A IA agora divide parágrafos densos e garante respiro visual
+        texto_otimizado = self.brain.optimize_layout(texto_original)
         
-        # Simulamos a aplicação automática para este exemplo, mas na interface o usuário 'Aceita'
-        self.project_data["manuscrito_revisado"] = manuscrito # Aqui entraria a lógica de 'Accept'
-        self.project_data["status"] = "REVISAO_IA_CONCLUIDA"
+        self.project_data["conteudo_otimizado"] = texto_otimizado
+        self.project_data["status"] = "TELA_3_OK"
         
-        return self.brain.format_for_display(sugestoes_analise)
+        return self.brain.format_for_display([])
 
     def finalizar_e_exportar(self, filename: Optional[str] = None) -> Optional[str]:
-        """
-        Consolida o projeto final em um arquivo DOCX.
-        """
-        logger.info("Finalizando projeto e exportando para DOCX.")
+        """Finalização e Exportação para DOCX 18pt."""
+        logger.info("Finalizando projeto e exportando para DOCX Mobile-First.")
         nome_arquivo = filename or f"{self.project_data['titulo'].replace(' ', '_')}_Final.docx"
         
-        conteudo_final = self.project_data.get("manuscrito_revisado") or self.project_data.get("manuscrito_original")
+        # Prioriza o conteúdo otimizado pela IA de Layout
+        conteudo_final = self.project_data.get("conteudo_otimizado") or self.project_data.get("conteudo_bruto")
         
         path_final = self.exporter.gerar_ebook_docx(
             titulo=self.project_data["titulo"],
@@ -131,36 +116,26 @@ class EbookGenerator:
         )
         
         if path_final:
-            logger.info(f"Processo concluído com sucesso. Arquivo: {path_final}")
-            self.project_data["status"] = "CONCLUIDO_EXPORTADO"
+            logger.info(f"Ebook exportado com sucesso: {path_final}")
+            self.project_data["status"] = "CONCLUIDO"
         
         return path_final
 
 # Autor: Renato Borges
 
 if __name__ == "__main__":
-    # Caminho do documento base para fundamentação pedagógica
-    DOCUMENTO_BNCC = "EBOOK-FEQ-BNCC-DA-COMPUTACAO-Professorrenato-com.pdf"
+    # O PDF é opcional na V3.0 (IA focada em estrutura)
+    app = EbookGenerator()
     
-    # Instanciação do Core
-    app = EbookGenerator(DOCUMENTO_BNCC)
-    
-    # 1. Simulação da Tela 1: Upload de Manuscrito
-    # Nota: Deve existir um arquivo 'manuscrito.docx' ou 'manuscrito.txt' para teste.
-    if app.executar_tela_1_upload("Guia Prático BNCC 2026", "manuscrito.docx"):
-        
-        # 2. Simulação da Tela 2: Configurações de Design
+    # Simulação do Workflow Completo
+    if app.executar_tela_1_upload("Ebook Mobile Expert", "manuscrito.docx"):
         app.executar_tela_2_design(
             cores=["#1e3c72", "#2a5298"], 
             angulo=45, 
-            autor="Prof. Renato Borges",
-            subtitulo="Implementação do DC-GO Computação na Sala de Aula"
+            autor="Renato Borges"
         )
         
-        # 3. Simulação da Tela 3: Revisão de IA
-        # O sistema busca no PDF termos sobre Eixos e Práticas Plugadas[cite: 112, 116, 117].
-        sugestoes_painel = app.executar_tela_3_ia_revisao()
-        print(sugestoes_painel)
+        status_ia = app.executar_tela_3_diagramacao_ia()
+        print(status_ia)
         
-        # 4. Exportação Final
         app.finalizar_e_exportar()
